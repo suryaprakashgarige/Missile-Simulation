@@ -84,7 +84,7 @@ function generateTrajectory(start, target, config) {
     const speedOfSound = kinematics.getSpeedOfSound(currAlt, planetKey);
     const vRel = v - windVelocity * Math.cos(theta);
     const drag = 0.5 * rho * vRel * vRel * vehicle.Cd * vehicle.area;
-    const gLocal = planet.g * Math.pow(6371000 / (6371000 + currAlt), 2);
+    const gLocal = planet.g * Math.pow(geo.R / (geo.R + currAlt), 2);
 
     // 4. Guidance & Controls
     // Standard profile: Ballistic ascent during booster phase, active pursuit guidance engaged post-burn.

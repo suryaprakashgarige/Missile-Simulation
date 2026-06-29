@@ -69,9 +69,7 @@ function initCharts() {
   });
 }
 
-function updateCharts(samples, activeIndex = -1) {
-  const timeLabels = samples.map(s => s.time);
-  
+function loadChartData(samples) {
   const metrics = {
     altitude: samples.map(s => ({ x: s.time, y: s.alt })),
     velocity: samples.map(s => ({ x: s.time, y: s.vel })),
@@ -80,16 +78,22 @@ function updateCharts(samples, activeIndex = -1) {
   };
 
   Object.keys(charts).forEach(key => {
-    const chart = charts[key];
-    chart.data.datasets[0].data = metrics[key];
+    charts[key].data.datasets[0].data = metrics[key];
+    charts[key].data.datasets[1].data = [];
+    charts[key].update('none');
+  });
+}
 
-    if (activeIndex >= 0 && activeIndex < samples.length) {
-      chart.data.datasets[1].data = [metrics[key][activeIndex]];
+function updateChartActiveIndex(activeIndex) {
+  Object.keys(charts).forEach(key => {
+    const chart = charts[key];
+    const baseData = chart.data.datasets[0].data;
+    if (activeIndex >= 0 && activeIndex < baseData.length) {
+      chart.data.datasets[1].data = [baseData[activeIndex]];
     } else {
       chart.data.datasets[1].data = [];
     }
-    
-    chart.update('none'); // silent update
+    chart.update('none');
   });
 }
 
@@ -235,11 +239,14 @@ async function runSimulation() {
       charts[key].options.scales.x.max = trajectoryData.totalTime;
     });
 
-    updateCharts(trajectoryData.samples, 0);
+    loadChartData(trajectoryData.samples);
+    updateChartActiveIndex(0);
 
     if (preRenderListener) {
       viewer.scene.preRender.removeEventListener(preRenderListener);
     }
+
+    let lastActiveIndex = -1;
 
     preRenderListener = function() {
       if (!viewer.clock.shouldAnimate) return;
@@ -250,6 +257,9 @@ async function runSimulation() {
       // Locate closest sample using exact time comparison
       let activeIndex = trajectoryData.samples.findIndex(s => s.time >= elapsedSeconds);
       if (activeIndex === -1) activeIndex = trajectoryData.samples.length - 1;
+
+      if (activeIndex === lastActiveIndex) return; // Skip update if frame index hasn't changed
+      lastActiveIndex = activeIndex;
 
       const sample = trajectoryData.samples[activeIndex];
       if (sample) {
@@ -262,7 +272,7 @@ async function runSimulation() {
         document.getElementById('hud-time').textContent = `${elapsedSeconds.toFixed(1)} s`;
 
         // Update charts with synchronized active index
-        updateCharts(trajectoryData.samples, activeIndex);
+        updateChartActiveIndex(activeIndex);
       }
     };
 

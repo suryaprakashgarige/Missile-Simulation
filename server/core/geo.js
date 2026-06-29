@@ -52,6 +52,7 @@ function destinationPoint(lat, lon, bearing, distance) {
 }
 
 module.exports = {
+  R,
   toRadians,
   toDegrees,
   haversineDistance,

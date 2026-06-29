@@ -1,24 +1,69 @@
-const g = 9.81;
-const MAX_ALTITUDE = 150000; // meters
+const PLANETS = {
+  earth: {
+    g: 9.81,
+    rho0: 1.225, // sea level density, kg/m^3
+    H: 8500,     // scale height, meters
+    c0: 343      // speed of sound, m/s
+  },
+  moon: {
+    g: 1.62,
+    rho0: 0.0,
+    H: 1,
+    c0: 1 // vacuum
+  },
+  mars: {
+    g: 3.71,
+    rho0: 0.020,
+    H: 11100,
+    c0: 240
+  }
+};
 
-function computeTotalTime(distance, velocity) {
-  return distance / velocity;
+const VEHICLES = {
+  rocket: {
+    mass: 50000,      // dry mass, kg
+    fuelMass: 100000, // fuel mass, kg
+    thrust: 3000000,  // Newtons
+    burnTime: 80,     // seconds
+    Cd: 0.2,          // Drag coefficient
+    area: 7.0         // cross sectional area, m^2
+  },
+  missile: {
+    mass: 1500,
+    fuelMass: 2000,
+    thrust: 90000,
+    burnTime: 15,
+    Cd: 0.15,
+    area: 0.5
+  },
+  projectile: {
+    mass: 50,
+    fuelMass: 0,
+    thrust: 0,
+    burnTime: 0,
+    Cd: 0.3,
+    area: 0.02
+  }
+};
+
+function getDensity(alt, planetKey) {
+  const planet = PLANETS[planetKey] || PLANETS.earth;
+  if (planet.rho0 === 0) return 0;
+  return planet.rho0 * Math.exp(-alt / planet.H);
 }
 
-function altitudeProfile(t, totalTime) {
-  const f = t / totalTime;
-  const h = 4 * MAX_ALTITUDE * f * (1 - f);
-  return Math.max(0, h);
-}
-
-function velocityProfile(t, totalTime, v) {
-  if (t < 0.2 * totalTime) return v * (t / (0.2 * totalTime));
-  if (t < 0.8 * totalTime) return v;
-  return v * (1 - (t - 0.8 * totalTime) / (0.2 * totalTime));
+function getSpeedOfSound(alt, planetKey) {
+  const planet = PLANETS[planetKey] || PLANETS.earth;
+  // Simple speed of sound decrease with altitude model (only for earth/mars)
+  if (planetKey === 'moon') return 1;
+  const tempRatio = Math.max(0.5, 1 - (0.0065 * alt) / 288.15); // standard lapse rate
+  return planet.c0 * Math.sqrt(tempRatio);
 }
 
 module.exports = {
-  computeTotalTime,
-  altitudeProfile,
-  velocityProfile
+  PLANETS,
+  VEHICLES,
+  getDensity,
+  getSpeedOfSound
 };
+

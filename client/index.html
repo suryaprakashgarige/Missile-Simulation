@@ -1,127 +1,248 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Trajectory Simulation</title>
+  <title>AeroSim - 3D Aerospace Flight Simulation Platform</title>
   <script>window.CESIUM_BASE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/cesium/1.114.0/';</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.114.0/Cesium.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.114.0/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#05070A',
+              card: '#0D1117',
+              border: '#21262D',
+              accent: '#38BDF8', // Cyan/electric blue
+              accentMuted: '#0369A1',
+              success: '#4ADE80'
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
+    /* Custom scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
     }
-    #cesiumContainer {
-      width: 100%;
-      height: 100%;
+    ::-webkit-scrollbar-track {
+      background: #0D1117;
     }
-    #ui-panel {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(42, 42, 42, 0.8);
-      color: white;
-      padding: 15px;
-      border-radius: 8px;
-      font-family: sans-serif;
-      z-index: 10;
+    ::-webkit-scrollbar-thumb {
+      background: #21262D;
+      border-radius: 2px;
     }
-    .input-group {
-      margin-bottom: 10px;
-    }
-    label {
-      display: inline-block;
-      width: 80px;
-    }
-    input {
-      width: 80px;
-      padding: 4px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    #hud-panel {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(10, 20, 30, 0.85);
-      border: 1px solid #00ffcc;
-      color: #00ffcc;
-      padding: 15px 20px;
-      border-radius: 8px;
-      font-family: 'Courier New', Courier, monospace;
-      z-index: 10;
-      display: none;
-      box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
-    }
-    #hud-panel h3 {
-      margin-top: 0;
-      margin-bottom: 15px;
-      text-transform: uppercase;
-      font-size: 16px;
-      border-bottom: 1px solid #00ffcc;
-      padding-bottom: 5px;
-    }
-    .hud-item {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 14px;
-      min-width: 200px;
-    }
-    .hud-item span:first-child {
-      color: #aaa;
-    }
-    .hud-item span:last-child {
-      font-weight: bold;
+    .cesium-viewer-bottom {
+      display: none !important; /* Hide defaults for cleaner engineering look */
     }
   </style>
 </head>
-<body>
-  <div id="ui-panel">
-    <h3>Trajectory Config</h3>
-    <div class="input-group">
-      <p id="start-status">1. Click on globe for Start (Green)</p>
-      <p id="target-status">2. Click on globe for Target (Red)</p>
+<body class="h-full bg-brand-bg text-gray-100 font-sans flex flex-col overflow-hidden select-none">
+
+  <!-- Header Bar -->
+  <header class="h-12 border-b border-brand-border bg-brand-card flex items-center justify-between px-4 z-10 shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="w-3 h-3 bg-brand-accent rounded-sm animate-pulse"></div>
+      <h1 class="text-sm font-semibold tracking-wider text-gray-200 uppercase font-mono">AeroSim // Trajectory Simulation Engine</h1>
     </div>
-    <button id="simulateBtn" style="background: #e63946;">Launch Missile</button>
-    <button id="resetBtn" style="background: #333; margin-top: 5px;">Reset</button>
+    <div class="flex items-center space-x-6 text-xs text-gray-400 font-mono">
+      <div>SYSTEM: <span class="text-brand-success">ONLINE</span></div>
+      <div>CORE: <span class="text-brand-accent">ACTIVE</span></div>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- Left Column: Mission Configuration Panel -->
+    <aside class="w-80 border-r border-brand-border bg-brand-card flex flex-col shrink-0 overflow-y-auto">
+      <div class="p-4 border-b border-brand-border">
+        <h2 class="text-xs font-bold tracking-widest text-brand-accent uppercase font-mono mb-3">Mission Preset</h2>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="presetRocketBtn" class="py-1.5 text-xs font-mono border border-brand-border rounded hover:border-brand-accent bg-[#161B22] text-gray-300">ROCKET</button>
+          <button id="presetMissileBtn" class="py-1.5 text-xs font-mono border border-brand-border rounded hover:border-brand-accent bg-[#161B22] text-gray-300">MISSILE</button>
+          <button id="presetProjBtn" class="py-1.5 text-xs font-mono border border-brand-border rounded hover:border-brand-accent bg-[#161B22] text-gray-300">PROJECTILE</button>
+        </div>
+      </div>
+
+      <!-- Config Inputs -->
+      <form id="configForm" class="p-4 space-y-4 flex-1">
+        <h2 class="text-xs font-bold tracking-widest text-brand-accent uppercase font-mono">Configuration</h2>
+
+        <div>
+          <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Target Planet</label>
+          <select id="planet" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200">
+            <option value="earth">Earth (g = 9.81 m/s², Dense Atmos)</option>
+            <option value="moon">Moon (g = 1.62 m/s², Vacuum)</option>
+            <option value="mars">Mars (g = 3.71 m/s², Thin Atmos)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Vehicle Type</label>
+          <select id="vehicleType" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200">
+            <option value="rocket">Heavy Orbital Booster</option>
+            <option value="missile">Hypersonic Cruise Missile</option>
+            <option value="projectile">Artillery Projectile</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Launch Angle (°)</label>
+            <input type="number" id="launchAngle" value="45" min="5" max="89" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200 font-mono">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Initial Vel (m/s)</label>
+            <input type="number" id="velocity" value="500" min="10" max="10000" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200 font-mono">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Payload Mass (kg)</label>
+            <input type="number" id="payload" value="500" min="0" max="100000" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200 font-mono">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Wind Speed (m/s)</label>
+            <input type="number" id="wind" value="0" min="-100" max="100" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200 font-mono">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-gray-400 uppercase font-mono mb-1">Max Duration (s)</label>
+          <input type="number" id="simulationTime" value="600" min="10" max="3600" class="w-full bg-brand-bg border border-brand-border rounded px-2.5 py-1.5 text-xs focus:border-brand-accent outline-none text-gray-200 font-mono">
+        </div>
+
+        <div class="pt-2 text-[10px] text-gray-500 space-y-1 font-mono">
+          <p id="start-status" class="text-brand-success">Green Marker: Unset (Click Globe)</p>
+          <p id="target-status" class="text-red-400">Red Marker: Unset (Click Globe)</p>
+        </div>
+
+        <button type="button" id="simulateBtn" class="w-full py-2.5 bg-brand-accent hover:bg-sky-400 text-gray-900 font-bold rounded text-xs tracking-wider uppercase font-mono transition-colors">Compute & Load Trajectory</button>
+      </form>
+    </aside>
+
+    <!-- Center/Right Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+      
+      <!-- Top Section: 3D visualization and charts side-by-side -->
+      <div class="flex-1 flex overflow-hidden border-b border-brand-border">
+        
+        <!-- Interactive 3D visualization -->
+        <div class="flex-1 relative bg-black">
+          <div id="cesiumContainer" class="absolute inset-0"></div>
+          
+          <!-- Simulation Controller Overlay -->
+          <div class="absolute bottom-4 left-4 right-4 bg-brand-card/90 border border-brand-border rounded p-3 z-10 flex items-center justify-between font-mono backdrop-blur-sm">
+            <div class="flex items-center space-x-3">
+              <button id="playBtn" class="p-1 px-3 text-xs bg-brand-accent hover:bg-sky-400 text-gray-900 rounded font-bold">PLAY</button>
+              <button id="pauseBtn" class="p-1 px-3 text-xs bg-[#21262D] hover:bg-[#30363D] text-gray-300 rounded font-bold">PAUSE</button>
+              <button id="resetBtn" class="p-1 px-3 text-xs bg-red-950/40 border border-red-800 text-red-400 hover:bg-red-900/40 rounded font-bold">RESET</button>
+            </div>
+            
+            <div class="flex items-center space-x-3 text-xs">
+              <span class="text-gray-400">MULTIPLIER:</span>
+              <select id="timeMultiplier" class="bg-brand-bg border border-brand-border rounded px-1 text-gray-300">
+                <option value="1">1x</option>
+                <option value="5" selected>5x</option>
+                <option value="10">10x</option>
+                <option value="20">20x</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: Real-time Scientific Plots Grid -->
+        <div class="w-[450px] border-l border-brand-border bg-brand-card flex flex-col overflow-y-auto shrink-0 p-4 space-y-4">
+          <h2 class="text-xs font-bold tracking-widest text-brand-accent uppercase font-mono">Flight Data Graphs</h2>
+          
+          <div class="bg-brand-bg border border-brand-border rounded p-2 h-44 flex flex-col justify-between">
+            <span class="text-[10px] font-mono text-gray-400">ALTITUDE (m) vs TIME (s)</span>
+            <div class="relative flex-1"><canvas id="chartAltitude"></canvas></div>
+          </div>
+
+          <div class="bg-brand-bg border border-brand-border rounded p-2 h-44 flex flex-col justify-between">
+            <span class="text-[10px] font-mono text-gray-400">VELOCITY (m/s) vs TIME (s)</span>
+            <div class="relative flex-1"><canvas id="chartVelocity"></canvas></div>
+          </div>
+
+          <div class="bg-brand-bg border border-brand-border rounded p-2 h-44 flex flex-col justify-between">
+            <span class="text-[10px] font-mono text-gray-400">ACCELERATION (m/s²) vs TIME (s)</span>
+            <div class="relative flex-1"><canvas id="chartAcceleration"></canvas></div>
+          </div>
+
+          <div class="bg-brand-bg border border-brand-border rounded p-2 h-44 flex flex-col justify-between">
+            <span class="text-[10px] font-mono text-gray-400">DOWNRANGE DISTANCE (m) vs TIME (s)</span>
+            <div class="relative flex-1"><canvas id="chartDistance"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Panel: Telemetry Grid & Summary Reports -->
+      <footer class="h-56 bg-brand-card border-t border-brand-border flex shrink-0 overflow-hidden font-mono text-xs">
+        
+        <!-- Live Telemetry Readout -->
+        <div class="w-1/2 p-4 border-r border-brand-border flex flex-col justify-between">
+          <h2 class="text-xs font-bold tracking-widest text-brand-accent uppercase mb-2">Live Flight Telemetry</h2>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-brand-bg border border-brand-border rounded p-2.5">
+              <div class="text-[10px] text-gray-500 uppercase">Altitude</div>
+              <div id="hud-alt" class="text-lg font-bold text-gray-200 mt-1">0.00 m</div>
+            </div>
+            <div class="bg-brand-bg border border-brand-border rounded p-2.5">
+              <div class="text-[10px] text-gray-500 uppercase">Velocity</div>
+              <div id="hud-speed" class="text-lg font-bold text-gray-200 mt-1">0.00 m/s</div>
+            </div>
+            <div class="bg-brand-bg border border-brand-border rounded p-2.5">
+              <div class="text-[10px] text-gray-500 uppercase">Acceleration</div>
+              <div id="hud-accel" class="text-lg font-bold text-gray-200 mt-1">0.00 m/s²</div>
+            </div>
+            <div class="bg-brand-bg border border-brand-border rounded p-2.5">
+              <div class="text-[10px] text-gray-500 uppercase">Mach Number</div>
+              <div id="hud-mach" class="text-lg font-bold text-gray-200 mt-1">0.00 M</div>
+            </div>
+            <div class="bg-brand-bg border border-brand-border rounded p-2.5">
+              <div class="text-[10px] text-gray-500 uppercase">Downrange Range</div>
+              <div id="hud-dist" class="text-lg font-bold text-gray-200 mt-1">0.00 m</div>
+            </div>
+            <div class="bg-brand-bg border border-brand-border rounded p-2.5">
+              <div class="text-[10px] text-gray-500 uppercase">Simulation Time</div>
+              <div id="hud-time" class="text-lg font-bold text-gray-200 mt-1">0.00 s</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mission Summary & Exports -->
+        <div class="w-1/2 p-4 flex flex-col justify-between">
+          <div>
+            <h2 class="text-xs font-bold tracking-widest text-brand-accent uppercase mb-2">Simulation Summary</h2>
+            <div class="grid grid-cols-2 gap-y-1.5 text-xs text-gray-300">
+              <div>Apogee (Max Alt): <span id="sumApogee" class="font-bold text-brand-accent">-</span></div>
+              <div>Max Speed: <span id="sumMaxSpeed" class="font-bold text-brand-accent">-</span></div>
+              <div>Max Acceleration: <span id="sumMaxAccel" class="font-bold text-brand-accent">-</span></div>
+              <div>Impact Range: <span id="sumImpactRange" class="font-bold text-brand-accent">-</span></div>
+            </div>
+          </div>
+          <div class="flex space-x-3 pt-2">
+            <button id="exportCsvBtn" class="flex-1 py-2 bg-brand-bg border border-brand-border hover:border-brand-accent text-gray-300 font-bold rounded uppercase transition-colors text-[10px]">Export Telemetry to CSV</button>
+            <button id="exportKmlBtn" class="flex-1 py-2 bg-brand-bg border border-brand-border hover:border-brand-accent text-gray-300 font-bold rounded uppercase transition-colors text-[10px]">Export Mission log</button>
+          </div>
+        </div>
+      </footer>
+
+    </main>
   </div>
-  <div id="hud-panel">
-    <h3>Live Telemetry</h3>
-    <div class="hud-item">
-      <span>Altitude:</span>
-      <span id="hud-alt">0.00 km</span>
-    </div>
-    <div class="hud-item">
-      <span>Speed:</span>
-      <span id="hud-speed">0.00 Mach</span>
-    </div>
-    <div class="hud-item">
-      <span>Distance:</span>
-      <span id="hud-dist">0.00 km</span>
-    </div>
-    <div class="hud-item">
-      <span>Time:</span>
-      <span id="hud-time">0.0 s</span>
-    </div>
-  </div>
-  <div id="cesiumContainer"></div>
+
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>
+

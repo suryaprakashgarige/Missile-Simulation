@@ -1,12 +1,12 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
-export async function simulateTrajectory(start, target) {
+export async function simulateTrajectory(start, target, config = {}) {
   const response = await fetch(`${API_URL}/simulate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ start, target })
+    body: JSON.stringify({ start, target, ...config })
   });
 
   if (!response.ok) {
@@ -16,3 +16,4 @@ export async function simulateTrajectory(start, target) {
 
   return response.json();
 }
+

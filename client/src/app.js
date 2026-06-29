@@ -10,8 +10,6 @@ let preRenderListener = null;
 
 // Telemetry state
 let trajectoryData = null;
-let currentSampleIndex = 0;
-let isSimulating = false;
 let startTimeIso = null;
 let startJulianTime = null;
 
@@ -165,11 +163,14 @@ function resetScene() {
   document.getElementById('sumMaxSpeed').textContent = "-";
   document.getElementById('sumMaxAccel').textContent = "-";
   document.getElementById('sumImpactRange').textContent = "-";
+  document.getElementById('sumStatus').textContent = "-";
+  document.getElementById('sumStatus').className = "font-bold text-brand-success";
 
   // Reset Charts
   Object.keys(charts).forEach(key => {
     charts[key].data.datasets[0].data = [];
     charts[key].data.datasets[1].data = [];
+    charts[key].options.scales.x.max = undefined;
     charts[key].update();
   });
 }
@@ -187,7 +188,8 @@ async function runSimulation() {
     velocity: document.getElementById('velocity').value,
     payload: document.getElementById('payload').value,
     wind: document.getElementById('wind').value,
-    simulationTime: document.getElementById('simulationTime').value
+    simulationTime: document.getElementById('simulationTime').value,
+    hitRadius: document.getElementById('hitRadius').value
   };
 
   try {
@@ -224,6 +226,15 @@ async function runSimulation() {
     document.getElementById('sumMaxAccel').textContent = `${Math.max(...accels).toFixed(1)} m/s²`;
     document.getElementById('sumImpactRange').textContent = `${ranges[ranges.length - 1].toFixed(1)} m`;
 
+    const statusEl = document.getElementById('sumStatus');
+    statusEl.textContent = trajectoryData.status || 'FINISHED';
+    statusEl.className = trajectoryData.status === 'INTERCEPTED' ? 'font-bold text-brand-success' : 'font-bold text-red-400';
+
+    // Update X-axis limits for all charts to match the actual simulation end time
+    Object.keys(charts).forEach(key => {
+      charts[key].options.scales.x.max = trajectoryData.totalTime;
+    });
+
     updateCharts(trajectoryData.samples, 0);
 
     if (preRenderListener) {
@@ -236,12 +247,13 @@ async function runSimulation() {
       const currentTime = viewer.clock.currentTime;
       const elapsedSeconds = Cesium.JulianDate.secondsDifference(currentTime, startJulianTime);
       
-      // Locate closest sample
+      // Locate closest sample using exact time comparison
       let activeIndex = trajectoryData.samples.findIndex(s => s.time >= elapsedSeconds);
       if (activeIndex === -1) activeIndex = trajectoryData.samples.length - 1;
 
       const sample = trajectoryData.samples[activeIndex];
       if (sample) {
+        // Synchronized telemetry value display
         document.getElementById('hud-alt').textContent = `${sample.alt.toFixed(1)} m`;
         document.getElementById('hud-speed').textContent = `${sample.vel.toFixed(1)} m/s`;
         document.getElementById('hud-accel').textContent = `${sample.accel.toFixed(1)} m/s²`;
@@ -249,6 +261,7 @@ async function runSimulation() {
         document.getElementById('hud-dist').textContent = `${sample.range.toFixed(1)} m`;
         document.getElementById('hud-time').textContent = `${elapsedSeconds.toFixed(1)} s`;
 
+        // Update charts with synchronized active index
         updateCharts(trajectoryData.samples, activeIndex);
       }
     };
@@ -270,7 +283,8 @@ const PRESETS = {
     velocity: 1500,
     payload: 2000,
     wind: 0,
-    simulationTime: 1200
+    simulationTime: 1200,
+    hitRadius: 100
   },
   missile: {
     planet: 'earth',
@@ -279,7 +293,8 @@ const PRESETS = {
     velocity: 800,
     payload: 400,
     wind: 5,
-    simulationTime: 400
+    simulationTime: 400,
+    hitRadius: 50
   },
   projectile: {
     planet: 'earth',
@@ -288,7 +303,8 @@ const PRESETS = {
     velocity: 250,
     payload: 0,
     wind: -2,
-    simulationTime: 200
+    simulationTime: 200,
+    hitRadius: 15
   }
 };
 
@@ -303,6 +319,7 @@ function applyPreset(key) {
   document.getElementById('payload').value = preset.payload;
   document.getElementById('wind').value = preset.wind;
   document.getElementById('simulationTime').value = preset.simulationTime;
+  document.getElementById('hitRadius').value = preset.hitRadius || 50;
 }
 
 // Telemetry CSV Export
@@ -313,10 +330,10 @@ function exportCsv() {
   }
 
   let csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Time(s),Latitude(deg),Longitude(deg),Altitude(m),Velocity(m/s),Acceleration(m/s^2),Mach,Range(m)\n";
+  csvContent += "Time(s),Latitude(deg),Longitude(deg),Altitude(m),Velocity(m/s),Acceleration(m/s^2),Mach,Range(m),Thrust(N),Drag(N),Mass(kg),FPA(deg),Status\n";
 
   trajectoryData.samples.forEach(s => {
-    csvContent += `${s.time},${s.lat},${s.lon},${s.alt},${s.vel},${s.accel},${s.mach},${s.range}\n`;
+    csvContent += `${s.time},${s.lat},${s.lon},${s.alt},${s.vel},${s.accel},${s.mach},${s.range},${s.thrust},${s.drag},${s.mass},${s.thetaDeg},${s.status}\n`;
   });
 
   const encodedUri = encodeURI(csvContent);

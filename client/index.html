@@ -9,6 +9,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.114.0/Widgets/widgets.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -242,8 +243,8 @@
 
           </div>
           <div class="flex space-x-3 pt-2">
-            <button id="exportCsvBtn" class="flex-1 py-2 bg-brand-bg border border-brand-border hover:border-brand-accent text-gray-300 font-bold rounded uppercase transition-colors text-[10px]">Export Telemetry to CSV</button>
-            <button id="exportKmlBtn" class="flex-1 py-2 bg-brand-bg border border-brand-border hover:border-brand-accent text-gray-300 font-bold rounded uppercase transition-colors text-[10px]">Export Mission log</button>
+            <button id="exportCsvBtn" class="flex-1 py-2 bg-brand-bg border border-brand-border hover:border-brand-accent text-gray-300 font-bold rounded uppercase transition-colors text-[10px]">Export CSV</button>
+            <button id="exportPdfBtn" class="flex-1 py-2 bg-brand-bg border border-brand-border hover:border-brand-accent text-gray-300 font-bold rounded uppercase transition-colors text-[10px]">Export PDF</button>
           </div>
         </div>
       </footer>

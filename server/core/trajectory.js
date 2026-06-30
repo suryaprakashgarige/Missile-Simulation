@@ -16,6 +16,11 @@ function generateTrajectory(start, target, config) {
 
   // Initial geographic parameters
   const initialBearing = geo.initialBearing(start.lat, start.lon, target.lat, target.lon);
+  const initialGroundDistance = geo.haversineDistance(start.lat, start.lon, target.lat, target.lon);
+  const estimatedFlightTime = initialGroundDistance / Math.max(initialVelocity, 1);
+  const autoSimTime = vehicleKey === 'projectile'
+    ? maxSimTime
+    : Math.max(maxSimTime, vehicle.burnTime + estimatedFlightTime * 3 + 120);
 
   // Simulation parameters
   const dt = 0.5; // step size in seconds
@@ -39,6 +44,7 @@ function generateTrajectory(start, target, config) {
 
   let totalGroundRange = 0;
   let hitDetected = false;
+  let groundImpact = false;
 
   // Add initial sample
   samples.push({
@@ -58,7 +64,7 @@ function generateTrajectory(start, target, config) {
     status: 'Launched'
   });
 
-  while (t < maxSimTime) {
+  while (t < autoSimTime) {
     t += dt;
 
     // 1. Check distance to target
@@ -83,15 +89,21 @@ function generateTrajectory(start, target, config) {
     const rho = kinematics.getDensity(currAlt, planetKey);
     const speedOfSound = kinematics.getSpeedOfSound(currAlt, planetKey);
     const vRel = v - windVelocity * Math.cos(theta);
-    const drag = 0.5 * rho * vRel * vRel * vehicle.Cd * vehicle.area;
+    const dragMagnitude = 0.5 * rho * vRel * vRel * vehicle.Cd * vehicle.area;
+    const dragDirection = Math.sign(vRel);
+    const drag = dragMagnitude * dragDirection;
     const gLocal = planet.g * Math.pow(geo.R / (geo.R + currAlt), 2);
 
     // 4. Guidance & Controls
-    // Standard profile: Ballistic ascent during booster phase, active pursuit guidance engaged post-burn.
-    const isGuidanceActive = t > vehicle.burnTime;
+    // Guided vehicles steer toward the target throughout flight. Projectiles remain ballistic.
+    const isGuidanceActive = vehicleKey !== 'projectile';
     
     const psiTarget = geo.initialBearing(currLat, currLon, target.lat, target.lon);
-    const thetaTarget = Math.atan2(-currAlt, dGround);
+    const terminalDiveAngle = Math.atan2(-currAlt, dGround);
+    const loftAngle = launchAngleDeg * Math.PI / 180;
+    const thetaTarget = isBurning && dGround > 5000
+      ? Math.max(terminalDiveAngle, loftAngle * 0.35)
+      : terminalDiveAngle;
 
     let dPsi = 0;
     let dTheta = 0;
@@ -113,7 +125,7 @@ function generateTrajectory(start, target, config) {
       dPsi = Math.max(-maxTurnRate * dt, Math.min(maxTurnRate * dt, psiErr));
 
       if (v > 0.1) {
-        dTheta = -(gLocal * Math.cos(theta)) / v; // ballistic gravity turn component
+        dTheta = (-(gLocal * Math.cos(theta)) / v) * dt; // ballistic gravity turn component
       }
     }
 
@@ -135,7 +147,17 @@ function generateTrajectory(start, target, config) {
     currLat = newPos.lat;
     currLon = newPos.lon;
     currAlt += v * Math.sin(theta) * dt;
-    totalGroundRange += ds;
+    totalGroundRange += Math.abs(ds);
+
+    const updatedDGround = geo.haversineDistance(currLat, currLon, target.lat, target.lon);
+    const updatedD3d = Math.sqrt(updatedDGround * updatedDGround + currAlt * currAlt);
+    const passedTarget = updatedDGround > dGround && Math.min(dGround, updatedDGround) <= Math.max(hitRadius, Math.abs(ds));
+    const closeToGroundTarget = currAlt <= Math.max(hitRadius, Math.abs(v * Math.sin(theta) * dt) + hitRadius);
+    const impactNearTarget = currAlt <= 0 && updatedDGround <= Math.max(hitRadius, Math.abs(ds));
+    if (updatedD3d <= hitRadius || (passedTarget && closeToGroundTarget) || impactNearTarget) {
+      hitDetected = true;
+      break;
+    }
 
     const accel = dv; // instantaneous acceleration (m/s^2)
     const mach = v / speedOfSound;
@@ -159,6 +181,7 @@ function generateTrajectory(start, target, config) {
     });
 
     if (currAlt < 0) {
+      groundImpact = true;
       break;
     }
   }
@@ -184,9 +207,11 @@ function generateTrajectory(start, target, config) {
 
   return {
     totalTime: t,
+    requestedMaxTime: maxSimTime,
+    simulationLimit: autoSimTime,
     totalDistance: totalGroundRange,
     samples,
-    status: hitDetected ? 'INTERCEPTED' : 'CRASHED'
+    status: hitDetected ? 'INTERCEPTED' : (groundImpact ? 'CRASHED' : 'TIMEOUT')
   };
 }
 

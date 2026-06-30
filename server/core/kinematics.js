@@ -30,9 +30,9 @@ const VEHICLES = {
   },
   missile: {
     mass: 1500,
-    fuelMass: 2000,
-    thrust: 90000,
-    burnTime: 15,
+    fuelMass: 14000,
+    thrust: 130000,
+    burnTime: 140,
     Cd: 0.15,
     area: 0.5
   },

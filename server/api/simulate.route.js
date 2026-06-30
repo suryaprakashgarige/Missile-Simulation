@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post('/simulate', (req, res) => {
   try {
-    const { start, target, vehicleType, launchAngle, velocity, payload, wind, planet, simulationTime } = req.body;
+    const { start, target, vehicleType, launchAngle, velocity, payload, wind, planet, simulationTime, hitRadius } = req.body;
     
     if (!start || !target || start.lat == null || start.lon == null || target.lat == null || target.lon == null) {
       return res.status(400).json({ error: "Invalid start or target parameters" });
@@ -18,7 +18,8 @@ router.post('/simulate', (req, res) => {
       payload,
       wind,
       planet,
-      simulationTime
+      simulationTime,
+      hitRadius
     };
 
     const trajectory = generateTrajectory(start, target, config);

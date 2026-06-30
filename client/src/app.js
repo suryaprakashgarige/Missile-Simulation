@@ -303,7 +303,7 @@ const PRESETS = {
     velocity: 800,
     payload: 400,
     wind: 5,
-    simulationTime: 400,
+    simulationTime: 1200,
     hitRadius: 50
   },
   projectile: {

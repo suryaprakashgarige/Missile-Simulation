@@ -1,0 +1,30 @@
+# Ignore node_modules and logs
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Ignore git and local IDE files
+.git/
+.github/
+.vscode/
+.idea/
+.gemini/
+.system_generated/
+
+# Ignore documentation and deployment files not needed in production container
+docs/
+k8s/
+README.md
+vercel.json
+
+# Ignore local environment configurations
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml

@@ -1,0 +1,4 @@
+# Pre-Launch Missile Simulation Platform
+# Note: This is a Node.js/Express-based application.
+# Python and pip packages are not required to run or build this application.
+# This file is included as a placeholder for DevOps compatibility.
